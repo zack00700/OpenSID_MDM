@@ -13,7 +13,6 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, request, jsonify, g, Response
 from io import StringIO, BytesIO
-from maritime import maritime_bp, MARITIME_SCHEMA
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 DB_PATH    = os.path.join(BASE_DIR, '..', 'data', 'mdm.db')
