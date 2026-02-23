@@ -891,8 +891,9 @@ def create_user():
     get_db().commit()
     return jsonify({'id':uid}),201
 
+init_db()  # Toujours initialiser (local + Render/gunicorn)
+
 if __name__=='__main__':
-    init_db()
     print("\n✅  O.S MDM V2 — Backend démarré !")
     print("📋  Admin : admin@osmdm.local / admin123")
     print("🌐  API   : http://localhost:5001/api\n")
