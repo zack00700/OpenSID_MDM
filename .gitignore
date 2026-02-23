@@ -1,0 +1,8 @@
+data/mdm.db
+data/mdm.db-shm
+data/mdm.db-wal
+uploads/
+__pycache__/
+*.pyc
+*.pyo
+.env

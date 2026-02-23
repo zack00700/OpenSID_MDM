@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>O.S MDM V2 — OpenSID Master Data Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--blue:#1B5EA6;--blue-dark:#144a85;--blue-light:#e8f0fb;--green:#10B981;--red:#EF4444;--amber:#F59E0B;--gray-bg:#f3f4f6;}
+    body{font-family:system-ui,sans-serif;background:var(--gray-bg);}
+    .sidebar-link{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:500;color:#bfcfe8;transition:all .15s;cursor:pointer;}
+    .sidebar-link:hover,.sidebar-link.active{background:#1a5799;color:#fff;}
+    .sidebar-link .badge-cnt{margin-left:auto;background:#ef4444;color:#fff;font-size:11px;border-radius:999px;padding:1px 7px;}
+    .card{background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid #f0f0f0;padding:22px;}
+    .btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .15s;border:none;outline:none;}
+    .btn-primary{background:var(--blue);color:#fff;}.btn-primary:hover{background:var(--blue-dark);}
+    .btn-success{background:#059669;color:#fff;}.btn-success:hover{background:#047857;}
+    .btn-secondary{background:#fff;color:#374151;border:1px solid #e5e7eb;}.btn-secondary:hover{background:#f9fafb;}
+    .btn-danger{background:#ef4444;color:#fff;}.btn-danger:hover{background:#dc2626;}
+    .btn-warning{background:#f59e0b;color:#fff;}.btn-warning:hover{background:#d97706;}
+    .input{width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;transition:border .15s;}
+    .input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,94,166,.1);}
+    .select{width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;background:#fff;}
+    .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
+    .table-th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;background:#f9fafb;}
+    .table-td{padding:10px 14px;font-size:13px;color:#374151;border-top:1px solid #f3f4f6;}
+    tr:hover td{background:#fafbff;}
+    .kpi-card{background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #f0f0f0;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+    .fade-in{animation:fi .2s ease-in;}
+    @keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .spinner{animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{position:fixed;top:16px;right:16px;z-index:9999;padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.15);transform:translateX(120%);transition:transform .3s ease;max-width:340px;}
+    .toast.show{transform:translateX(0);}
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
+    .modal{background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.18);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;}
+    .section{display:none;}.section.active{display:block;}
+    .tab-btn{padding:8px 16px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;border:none;background:transparent;color:#6b7280;transition:all .15s;}
+    .tab-btn.active{background:var(--blue);color:#fff;}
+    .status-ok{color:#059669;background:#d1fae5;}.status-error{color:#dc2626;background:#fee2e2;}.status-untested{color:#92400e;background:#fef3c7;}
+    .rule-strategy-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#e8f0fb;color:var(--blue);}
+    .progress-ring{transform:rotate(-90deg);}
+    .chart-container{position:relative;height:220px;}
+    #drop-zone.dragover{border-color:var(--blue)!important;background:#e8f0fb;}
+  </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<div id="login-page" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e8f0fb 0%,#f3f4f6 100%);">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(27,94,166,.13);padding:40px 36px;width:100%;max-width:400px;">
+    <div style="text-align:center;margin-bottom:28px;">
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNjAgODAiIHdpZHRoPSIyNjAiIGhlaWdodD0iODAiPgogIDwhLS0gQmFja2dyb3VuZDogdHJhbnNwYXJlbnQgKG1hdGNoZXMgcGFnZSBiZykgLS0+CiAgCiAgPCEtLSBJY29uOiByb3VuZGVkIHNxdWFyZSB3aXRoIERCL2RhdGEgc3RhY2tlZCBsYXllcnMgaWNvbiAtLT4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCA0KSI+CiAgICA8IS0tIE91dGVyIHJvdW5kZWQgc3F1YXJlIC0tPgogICAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjY4IiBoZWlnaHQ9IjY4IiByeD0iMTQiIHJ5PSIxNCIKICAgICAgICAgIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSI0Ii8+CiAgICA8IS0tIFRvcCBiYXIgKGxpa2UgYnJvd3NlciBjaHJvbWUpIC0tPgogICAgPGxpbmUgeDE9IjIiIHkxPSIyMSIgeDI9IjcwIiB5Mj0iMjEiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzLjUiLz4KICAgIDwhLS0gVHdvIGRvdHMgLS0+CiAgICA8Y2lyY2xlIGN4PSIxNCIgY3k9IjEzIiByPSIzIiBmaWxsPSIjMUI1RUE2Ii8+CiAgICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjEzIiByPSIzIiBmaWxsPSIjMUI1RUE2Ii8+CiAgICAKICAgIDwhLS0gRGF0YSBsYXllcnMgLyBNRE0gaWNvbiBpbnNpZGUgLS0+CiAgICA8IS0tIExheWVyIDEgKHRvcCBlbGxpcHNlKSAtLT4KICAgIDxlbGxpcHNlIGN4PSIzNiIgY3k9IjMzIiByeD0iMTYiIHJ5PSI1LjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8IS0tIExheWVyIDIgKG1pZGRsZSkgLS0+CiAgICA8ZWxsaXBzZSBjeD0iMzYiIGN5PSI0MyIgcng9IjE2IiByeT0iNS41IiBmaWxsPSJub25lIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPCEtLSBMZWZ0IHNpZGUgbGluZXMgY29ubmVjdGluZyBsYXllcnMgLS0+CiAgICA8bGluZSB4MT0iMjAiIHkxPSIzMyIgeDI9IjIwIiB5Mj0iNDMiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8IS0tIFJpZ2h0IHNpZGUgbGluZXMgY29ubmVjdGluZyBsYXllcnMgLS0+CiAgICA8bGluZSB4MT0iNTIiIHkxPSIzMyIgeDI9IjUyIiB5Mj0iNDMiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8IS0tIExheWVyIDMgKGJvdHRvbSkgLS0+CiAgICA8ZWxsaXBzZSBjeD0iMzYiIGN5PSI1MyIgcng9IjE2IiByeT0iNS41IiBmaWxsPSJub25lIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGxpbmUgeDE9IjIwIiB5MT0iNDMiIHgyPSIyMCIgeTI9IjUzIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGxpbmUgeDE9IjUyIiB5MT0iNDMiIHgyPSI1MiIgeTI9IjUzIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogIDwvZz4KCiAgPCEtLSBUZXh0OiBPLlMgLS0+CiAgPHRleHQgeD0iODgiIHk9IjQ2IiAKICAgICAgICBmb250LWZhbWlseT0iJ1NlZ29lIFVJJywgc3lzdGVtLXVpLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtd2VpZ2h0PSI4MDAiCiAgICAgICAgZm9udC1zaXplPSIzNiIKICAgICAgICBmaWxsPSIjMUI1RUE2IgogICAgICAgIGxldHRlci1zcGFjaW5nPSItMSI+Ty5TPC90ZXh0PgogIAogIDwhLS0gVGV4dDogTURNIC0tPgogIDx0ZXh0IHg9Ijg4IiB5PSI2NiIKICAgICAgICBmb250LWZhbWlseT0iJ1NlZ29lIFVJJywgc3lzdGVtLXVpLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtd2VpZ2h0PSI0MDAiCiAgICAgICAgZm9udC1zaXplPSIxNyIKICAgICAgICBmaWxsPSIjMUI1RUE2IgogICAgICAgIGxldHRlci1zcGFjaW5nPSIzIj5NRE08L3RleHQ+CgogIDwhLS0gVmVydGljYWwgc2VwYXJhdG9yIGxpbmUgLS0+CiAgPGxpbmUgeDE9IjE2MiIgeTE9IjMwIiB4Mj0iMTYyIiB5Mj0iNjgiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIG9wYWNpdHk9IjAuNCIvPgoKICA8IS0tIFJpZ2h0IHRleHQ6IHNvZnR3YXJlIGRldmVsb3BtZW50IC0tPgogIDx0ZXh0IHg9IjE3MCIgeT0iNDciCiAgICAgICAgZm9udC1mYW1pbHk9IidTZWdvZSBVSScsIHN5c3RlbS11aSwgc2Fucy1zZXJpZiIKICAgICAgICBmb250LXdlaWdodD0iNDAwIgogICAgICAgIGZvbnQtc2l6ZT0iMTAiCiAgICAgICAgZmlsbD0iIzFCNUVBNiIKICAgICAgICBvcGFjaXR5PSIwLjgiPm1hc3RlciBkYXRhPC90ZXh0PgogIDx0ZXh0IHg9IjE3MCIgeT0iNjIiCiAgICAgICAgZm9udC1mYW1pbHk9IidTZWdvZSBVSScsIHN5c3RlbS11aSwgc2Fucy1zZXJpZiIKICAgICAgICBmb250LXdlaWdodD0iNjAwIgogICAgICAgIGZvbnQtc2l6ZT0iMTAiCiAgICAgICAgZmlsbD0iIzFCNUVBNiIKICAgICAgICBvcGFjaXR5PSIwLjgiPm1hbmFnZW1lbnQ8L3RleHQ+Cjwvc3ZnPg==" alt="O.S MDM" style="height:52px;width:auto;margin:0 auto 12px;display:block;"/>
+      <h1 style="font-size:22px;font-weight:800;color:var(--blue);margin:0;">O.S MDM</h1>
+      <p style="font-size:13px;color:#9ca3af;margin:4px 0 0;">OpenSID · Master Data Management V2</p>
+    </div>
+    <form id="login-form">
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px;">Email</label>
+        <input type="email" id="login-email" class="input" value="admin@osmdm.local" placeholder="admin@osmdm.local"/>
+      </div>
+      <div style="margin-bottom:18px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px;">Mot de passe</label>
+        <input type="password" id="login-password" class="input" value="admin123" placeholder="••••••••"/>
+      </div>
+      <div id="login-error" style="display:none;font-size:13px;color:#dc2626;background:#fee2e2;border-radius:8px;padding:10px 12px;margin-bottom:14px;"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;">Se connecter</button>
+    </form>
+    <p style="text-align:center;font-size:11px;color:#d1d5db;margin-top:16px;">admin@osmdm.local / admin123</p>
+  </div>
+</div>
+
+<!-- ═══════════════════ APP ═══════════════════ -->
+<div id="app-page" style="min-height:100vh;display:none;">
+
+  <!-- SIDEBAR -->
+  <aside style="width:220px;background:#1B5EA6;display:flex;flex-direction:column;position:fixed;inset-y:0;left:0;z-index:40;">
+    <div style="padding:16px 14px 14px;border-bottom:1px solid rgba(255,255,255,.12);">
+      <div style="background:rgba(255,255,255,.95);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNjAgODAiIHdpZHRoPSIyNjAiIGhlaWdodD0iODAiPgogIDwhLS0gQmFja2dyb3VuZDogdHJhbnNwYXJlbnQgKG1hdGNoZXMgcGFnZSBiZykgLS0+CiAgCiAgPCEtLSBJY29uOiByb3VuZGVkIHNxdWFyZSB3aXRoIERCL2RhdGEgc3RhY2tlZCBsYXllcnMgaWNvbiAtLT4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCA0KSI+CiAgICA8IS0tIE91dGVyIHJvdW5kZWQgc3F1YXJlIC0tPgogICAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjY4IiBoZWlnaHQ9IjY4IiByeD0iMTQiIHJ5PSIxNCIKICAgICAgICAgIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSI0Ii8+CiAgICA8IS0tIFRvcCBiYXIgKGxpa2UgYnJvd3NlciBjaHJvbWUpIC0tPgogICAgPGxpbmUgeDE9IjIiIHkxPSIyMSIgeDI9IjcwIiB5Mj0iMjEiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzLjUiLz4KICAgIDwhLS0gVHdvIGRvdHMgLS0+CiAgICA8Y2lyY2xlIGN4PSIxNCIgY3k9IjEzIiByPSIzIiBmaWxsPSIjMUI1RUE2Ii8+CiAgICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjEzIiByPSIzIiBmaWxsPSIjMUI1RUE2Ii8+CiAgICAKICAgIDwhLS0gRGF0YSBsYXllcnMgLyBNRE0gaWNvbiBpbnNpZGUgLS0+CiAgICA8IS0tIExheWVyIDEgKHRvcCBlbGxpcHNlKSAtLT4KICAgIDxlbGxpcHNlIGN4PSIzNiIgY3k9IjMzIiByeD0iMTYiIHJ5PSI1LjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8IS0tIExheWVyIDIgKG1pZGRsZSkgLS0+CiAgICA8ZWxsaXBzZSBjeD0iMzYiIGN5PSI0MyIgcng9IjE2IiByeT0iNS41IiBmaWxsPSJub25lIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPCEtLSBMZWZ0IHNpZGUgbGluZXMgY29ubmVjdGluZyBsYXllcnMgLS0+CiAgICA8bGluZSB4MT0iMjAiIHkxPSIzMyIgeDI9IjIwIiB5Mj0iNDMiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8IS0tIFJpZ2h0IHNpZGUgbGluZXMgY29ubmVjdGluZyBsYXllcnMgLS0+CiAgICA8bGluZSB4MT0iNTIiIHkxPSIzMyIgeDI9IjUyIiB5Mj0iNDMiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIzIi8+CiAgICA8IS0tIExheWVyIDMgKGJvdHRvbSkgLS0+CiAgICA8ZWxsaXBzZSBjeD0iMzYiIGN5PSI1MyIgcng9IjE2IiByeT0iNS41IiBmaWxsPSJub25lIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGxpbmUgeDE9IjIwIiB5MT0iNDMiIHgyPSIyMCIgeTI9IjUzIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGxpbmUgeDE9IjUyIiB5MT0iNDMiIHgyPSI1MiIgeTI9IjUzIiBzdHJva2U9IiMxQjVFQTYiIHN0cm9rZS13aWR0aD0iMyIvPgogIDwvZz4KCiAgPCEtLSBUZXh0OiBPLlMgLS0+CiAgPHRleHQgeD0iODgiIHk9IjQ2IiAKICAgICAgICBmb250LWZhbWlseT0iJ1NlZ29lIFVJJywgc3lzdGVtLXVpLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtd2VpZ2h0PSI4MDAiCiAgICAgICAgZm9udC1zaXplPSIzNiIKICAgICAgICBmaWxsPSIjMUI1RUE2IgogICAgICAgIGxldHRlci1zcGFjaW5nPSItMSI+Ty5TPC90ZXh0PgogIAogIDwhLS0gVGV4dDogTURNIC0tPgogIDx0ZXh0IHg9Ijg4IiB5PSI2NiIKICAgICAgICBmb250LWZhbWlseT0iJ1NlZ29lIFVJJywgc3lzdGVtLXVpLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtd2VpZ2h0PSI0MDAiCiAgICAgICAgZm9udC1zaXplPSIxNyIKICAgICAgICBmaWxsPSIjMUI1RUE2IgogICAgICAgIGxldHRlci1zcGFjaW5nPSIzIj5NRE08L3RleHQ+CgogIDwhLS0gVmVydGljYWwgc2VwYXJhdG9yIGxpbmUgLS0+CiAgPGxpbmUgeDE9IjE2MiIgeTE9IjMwIiB4Mj0iMTYyIiB5Mj0iNjgiIHN0cm9rZT0iIzFCNUVBNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIG9wYWNpdHk9IjAuNCIvPgoKICA8IS0tIFJpZ2h0IHRleHQ6IHNvZnR3YXJlIGRldmVsb3BtZW50IC0tPgogIDx0ZXh0IHg9IjE3MCIgeT0iNDciCiAgICAgICAgZm9udC1mYW1pbHk9IidTZWdvZSBVSScsIHN5c3RlbS11aSwgc2Fucy1zZXJpZiIKICAgICAgICBmb250LXdlaWdodD0iNDAwIgogICAgICAgIGZvbnQtc2l6ZT0iMTAiCiAgICAgICAgZmlsbD0iIzFCNUVBNiIKICAgICAgICBvcGFjaXR5PSIwLjgiPm1hc3RlciBkYXRhPC90ZXh0PgogIDx0ZXh0IHg9IjE3MCIgeT0iNjIiCiAgICAgICAgZm9udC1mYW1pbHk9IidTZWdvZSBVSScsIHN5c3RlbS11aSwgc2Fucy1zZXJpZiIKICAgICAgICBmb250LXdlaWdodD0iNjAwIgogICAgICAgIGZvbnQtc2l6ZT0iMTAiCiAgICAgICAgZmlsbD0iIzFCNUVBNiIKICAgICAgICBvcGFjaXR5PSIwLjgiPm1hbmFnZW1lbnQ8L3RleHQ+Cjwvc3ZnPg==" alt="O.S MDM" style="height:28px;width:auto;"/>
+      </div>
+      <p style="font-size:12px;font-weight:700;color:#fff;margin:0;">O.S MDM</p>
+      <p style="font-size:10px;color:rgba(255,255,255,.5);margin:0;">OpenSID · V2.0</p>
+    </div>
+    <nav style="flex:1;padding:10px 8px;overflow-y:auto;">
+      <p style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;padding:6px 10px 4px;">Principal</p>
+      <div class="sidebar-link active" data-section="dashboard">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Dashboard
+      </div>
+      <p style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;padding:10px 10px 4px;">Données</p>
+      <div class="sidebar-link" data-section="connections">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
+        Connexions DB
+      </div>
+      <div class="sidebar-link" data-section="import">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/></svg>
+        Import
+      </div>
+      <div class="sidebar-link" data-section="entities">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        Entités
+      </div>
+      <div class="sidebar-link" data-section="duplicates">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Doublons
+        <span class="badge-cnt" id="dup-badge" style="display:none;">0</span>
+      </div>
+      <div class="sidebar-link" data-section="golden">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Golden Records
+      </div>
+      <div class="sidebar-link" data-section="rules">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+        Règles de fusion
+      </div>
+            <p style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;padding:10px 10px 4px;">Maritime</p>
+      <div class="sidebar-link" data-section="maritime-vessels">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Navires
+      </div>
+      <div class="sidebar-link" data-section="maritime-owners">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        Armateurs
+      </div>
+      <div class="sidebar-link" data-section="maritime-ports">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Ports
+      </div>
+      <div class="sidebar-link" data-section="maritime-calls">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Escales
+      </div>
+      <p style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;padding:10px 10px 4px;">Analytique</p>
+      <div class="sidebar-link" data-section="reporting">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Reporting / BI
+      </div>
+      <div class="sidebar-link" data-section="export">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        Export CSV
+      </div>
+    </nav>
+    <div style="padding:12px 8px;border-top:1px solid rgba(255,255,255,.12);">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;" id="user-avatar">A</div>
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:12px;font-weight:600;color:#fff;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="user-name">Admin</p>
+          <p style="font-size:10px;color:rgba(255,255,255,.5);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="user-email">admin@osmdm.local</p>
+        </div>
+        <button onclick="logout()" title="Déconnexion" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);padding:4px;">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main style="margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh;">
+    <header style="background:#fff;border-bottom:1px solid #f0f0f0;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30;">
+      <div>
+        <h2 style="font-size:17px;font-weight:700;color:#111827;margin:0;" id="page-title">Dashboard</h2>
+        <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;" id="page-subtitle">Vue d'ensemble</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;color:#9ca3af;" id="header-date"></span>
+      </div>
+    </header>
+    <div style="flex:1;padding:20px 24px;" id="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="section active fade-in" id="section-dashboard">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;" id="dashboard-kpis">
+          <div class="kpi-card" style="grid-column:span 1;"><p style="font-size:11px;color:#6b7280;font-weight:600;margin:0 0 6px;">Entités</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;" id="d-entities">—</p></div>
+          <div class="kpi-card"><p style="font-size:11px;color:#6b7280;font-weight:600;margin:0 0 6px;">Doublons</p><p style="font-size:28px;font-weight:800;color:#ef4444;margin:0;" id="d-dups">—</p></div>
+          <div class="kpi-card"><p style="font-size:11px;color:#6b7280;font-weight:600;margin:0 0 6px;">Golden Records</p><p style="font-size:28px;font-weight:800;color:#059669;margin:0;" id="d-golden">—</p></div>
+          <div class="kpi-card"><p style="font-size:11px;color:#6b7280;font-weight:600;margin:0 0 6px;">Imports</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;" id="d-imports">—</p></div>
+          <div class="kpi-card"><p style="font-size:11px;color:#6b7280;font-weight:600;margin:0 0 6px;">Connexions DB</p><p style="font-size:28px;font-weight:800;color:#1B5EA6;margin:0;" id="d-conns">—</p></div>
+          <div class="kpi-card"><p style="font-size:11px;color:#6b7280;font-weight:600;margin:0 0 6px;">Règles actives</p><p style="font-size:28px;font-weight:800;color:#f59e0b;margin:0;" id="d-rules">—</p></div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+          <div class="card"><h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 14px;">Dernières entités</h3><div id="recent-entities"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div></div>
+          <div class="card"><h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 14px;">Répartition par source</h3><div id="source-breakdown"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div></div>
+        </div>
+      </div>
+
+      <!-- ── CONNEXIONS DB ── -->
+      <div class="section fade-in" id="section-connections">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div></div>
+          <button class="btn btn-primary" onclick="openConnModal()">+ Nouvelle connexion</button>
+        </div>
+        <div id="connections-list"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+        <!-- Import depuis DB panel -->
+        <div class="card" style="margin-top:16px;" id="db-import-panel" style="display:none;">
+          <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 14px;">📥 Importer depuis une table</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Table</label>
+            <select class="select" id="db-import-table"><option value="">— Sélectionner —</option></select></div>
+            <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Label source</label>
+            <input class="input" id="db-import-label" placeholder="ex: CRM Production"/></div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Ou SQL personnalisé (optionnel)</label>
+            <textarea class="input" id="db-import-sql" rows="3" placeholder="SELECT * FROM clients WHERE actif = 1 LIMIT 5000" style="resize:vertical;font-family:monospace;font-size:12px;"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="previewTable()">👁 Prévisualiser (20 lignes)</button>
+            <button class="btn btn-primary" onclick="importFromDB()">📥 Importer</button>
+          </div>
+          <div id="db-preview" style="margin-top:14px;overflow-x:auto;"></div>
+        </div>
+      </div>
+
+      <!-- ── IMPORT ── -->
+      <div class="section fade-in" id="section-import">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card">
+            <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">Importer CSV / Excel</h3>
+            <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+              style="border:2px dashed #e5e7eb;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:all .2s;">
+              <svg width="40" height="40" style="color:#d1d5db;margin:0 auto 10px;display:block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <p style="font-size:13px;font-weight:600;color:#6b7280;margin:0;">Glissez ou cliquez</p>
+              <p style="font-size:11px;color:#9ca3af;margin:4px 0 0;">CSV ou Excel — max 100MB</p>
+              <input type="file" id="file-input" style="display:none;" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)"/>
+            </div>
+            <div id="file-preview" style="display:none;margin-top:12px;padding:10px 12px;background:#e8f0fb;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:13px;font-weight:500;color:#1B5EA6;" id="selected-filename"></span>
+              <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;">✕</button>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Label de la source</label>
+              <input class="input" id="import-source-label" placeholder="ex: CRM, ERP, Salesforce…"/>
+            </div>
+            <button class="btn btn-primary" onclick="uploadFile()" id="upload-btn" style="width:100%;justify-content:center;margin-top:12px;padding:9px;" disabled>Importer</button>
+            <div id="import-result" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px;"></div>
+          </div>
+          <div class="card">
+            <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">Historique des imports</h3>
+            <div id="import-logs-list"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ENTITÉS ── -->
+      <div class="section fade-in" id="section-entities">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+            <input class="input" style="max-width:220px;" placeholder="Rechercher…" id="entity-search" oninput="debounceSearch()"/>
+            <select class="select" style="max-width:160px;" id="entity-source-filter" onchange="loadEntities()">
+              <option value="">Toutes sources</option>
+              <option value="manual">Manuel</option>
+              <option value="import">Import</option>
+            </select>
+            <div style="margin-left:auto;">
+              <button class="btn btn-primary" onclick="openCreateEntity()">+ Nouvelle entité</button>
+            </div>
+          </div>
+          <div id="entities-table" style="overflow-x:auto;"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+            <p style="font-size:12px;color:#9ca3af;margin:0;" id="entity-count"></p>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="btn btn-secondary" onclick="prevPage()" id="prev-btn" style="padding:5px 10px;font-size:12px;" disabled>← Préc.</button>
+              <span style="font-size:12px;color:#6b7280;padding:0 6px;" id="page-info">Page 1</span>
+              <button class="btn btn-secondary" onclick="nextPage()" id="next-btn" style="padding:5px 10px;font-size:12px;" disabled>Suiv. →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DOUBLONS ── -->
+      <div class="section fade-in" id="section-duplicates">
+        <div class="card" style="margin-bottom:16px;">
+          <h3 style="font-size:14px;font-weight:700;margin:0 0 14px;">Paramètres de détection</h3>
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="flex:1;min-width:140px;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Méthode</label>
+              <select class="select" id="dup-method" onchange="toggleFuzzy()">
+                <option value="exact">Correspondance exacte</option>
+                <option value="fuzzy">Fuzzy (approximatif)</option>
+              </select>
+            </div>
+            <div style="flex:2;min-width:200px;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Champs (virgule séparés, vide = tous)</label>
+              <input class="input" id="dup-fields" placeholder="nom, email, telephone"/>
+            </div>
+            <div id="fuzzy-threshold-wrap" style="display:none;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Seuil %</label>
+              <input type="number" class="input" id="dup-threshold" value="80" min="50" max="100" style="width:80px;"/>
+            </div>
+            <button class="btn btn-primary" onclick="detectDuplicates()" id="detect-btn">🔍 Détecter</button>
+          </div>
+        </div>
+        <div id="duplicates-list"><p style="color:#9ca3af;font-size:13px;">Cliquez sur "Détecter" pour trouver les doublons.</p></div>
+      </div>
+
+      <!-- ── GOLDEN RECORDS ── -->
+      <div class="section fade-in" id="section-golden">
+        <div class="card"><h3 style="font-size:14px;font-weight:700;margin:0 0 4px;">Golden Records</h3>
+        <p style="font-size:12px;color:#9ca3af;margin:0 0 14px;">Entités consolidées après fusion.</p>
+        <div id="golden-list" style="overflow-x:auto;"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div></div>
+      </div>
+
+      <!-- ── RÈGLES DE FUSION ── -->
+      <div class="section fade-in" id="section-rules">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;margin:0 0 2px;">Règles de fusion automatique</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0;">Définissez comment les champs doivent être fusionnés lors de la création d'un Golden Record.</p>
+          </div>
+          <button class="btn btn-primary" onclick="openRuleModal()">+ Nouvelle règle</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;background:#e8f0fb;border:1px solid #bfcfe8;">
+          <h4 style="font-size:13px;font-weight:700;color:#1B5EA6;margin:0 0 8px;">💡 Stratégies disponibles</h4>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px;color:#374151;">
+            <div><b>most_complete</b> — Valeur la plus longue / complète</div>
+            <div><b>non_empty</b> — 1ère valeur non vide</div>
+            <div><b>longest</b> — Valeur avec le plus de caractères</div>
+            <div><b>source_priority</b> — Priorise par source (ordre défini)</div>
+            <div><b>always_entity1</b> — Toujours l'entité 1</div>
+            <div><b>always_entity2</b> — Toujours l'entité 2</div>
+          </div>
+        </div>
+        <div id="rules-list"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+      </div>
+
+      <!-- ── REPORTING / BI ── -->
+      <div class="section fade-in" id="section-reporting">
+        <!-- Tabs -->
+        <div style="display:flex;gap:6px;margin-bottom:18px;background:#fff;padding:6px;border-radius:12px;width:fit-content;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+          <button class="tab-btn active" onclick="switchReportTab('overview',this)">📊 Vue globale</button>
+          <button class="tab-btn" onclick="switchReportTab('pivot',this)">🔢 Tableau croisé</button>
+          <button class="tab-btn" onclick="switchReportTab('pdf',this)">📄 Export PDF</button>
+        </div>
+
+        <!-- Overview tab -->
+        <div id="report-overview">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;" id="bi-kpis"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="card"><h4 style="font-size:13px;font-weight:700;margin:0 0 12px;">Évolution des imports (30j)</h4><div class="chart-container"><canvas id="chart-imports"></canvas></div></div>
+            <div class="card"><h4 style="font-size:13px;font-weight:700;margin:0 0 12px;">Répartition par source</h4><div class="chart-container"><canvas id="chart-sources"></canvas></div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="card"><h4 style="font-size:13px;font-weight:700;margin:0 0 12px;">Doublons détectés (30j)</h4><div class="chart-container"><canvas id="chart-dups"></canvas></div></div>
+            <div class="card"><h4 style="font-size:13px;font-weight:700;margin:0 0 12px;">Golden Records créés (30j)</h4><div class="chart-container"><canvas id="chart-gr"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- Pivot tab -->
+        <div id="report-pivot" style="display:none;">
+          <div class="card" style="margin-bottom:16px;">
+            <h4 style="font-size:14px;font-weight:700;margin:0 0 14px;">Tableau croisé dynamique</h4>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;">
+              <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Champ ligne (rows)</label>
+              <select class="select" id="pivot-row"></select></div>
+              <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Champ colonne (optionnel)</label>
+              <select class="select" id="pivot-col"><option value="">— Aucun —</option></select></div>
+              <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Agrégation</label>
+              <select class="select" id="pivot-agg">
+                <option value="count">Comptage (count)</option>
+                <option value="sum">Somme (sum)</option>
+                <option value="mean">Moyenne (mean)</option>
+                <option value="max">Maximum (max)</option>
+                <option value="min">Minimum (min)</option>
+              </select></div>
+              <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Champ valeur (si ≠ count)</label>
+              <select class="select" id="pivot-value"><option value="">— Aucun —</option></select></div>
+            </div>
+            <button class="btn btn-primary" onclick="runPivot()">Générer le tableau</button>
+          </div>
+          <div class="card"><div id="pivot-result"><p style="color:#9ca3af;font-size:13px;">Configurez et cliquez sur "Générer".</p></div></div>
+        </div>
+
+        <!-- PDF tab -->
+        <div id="report-pdf" style="display:none;">
+          <div class="card" style="max-width:600px;">
+            <h4 style="font-size:14px;font-weight:700;margin:0 0 8px;">Export rapport PDF</h4>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 18px;">Génère un rapport complet avec tous les KPIs et graphiques actuels.</p>
+            <div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#374151;">
+              Le rapport inclura : KPIs globaux · Répartition par source · Évolution des imports · Taux de doublons · Couverture Golden Records
+            </div>
+            <button class="btn btn-primary" onclick="exportPDF()" style="gap:8px;">
+              <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+              Télécharger rapport PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── EXPORT ── -->
+      <div class="section fade-in" id="section-export">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card">
+            <h3 style="font-size:14px;font-weight:700;margin:0 0 4px;">Entités actives</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">Toutes les entités de la base MDM.</p>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Filtrer par source</label>
+              <input class="input" id="export-source" placeholder="ex: CRM, ERP…"/>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
+              <input type="checkbox" id="export-merged" style="width:14px;height:14px;"/>
+              <label style="font-size:13px;color:#374151;">Inclure les entités fusionnées</label>
+            </div>
+            <button class="btn btn-primary" onclick="exportEntities()" style="width:100%;justify-content:center;">📥 Exporter CSV</button>
+          </div>
+          <div class="card">
+            <h3 style="font-size:14px;font-weight:700;margin:0 0 4px;">Golden Records</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0 0 16px;">Uniquement les données consolidées validées.</p>
+            <div style="background:#d1fae5;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#065f46;">
+              ✅ Ce fichier est la "base nettoyée" de référence — prête à être réinjectée dans vos systèmes.
+            </div>
+            <button class="btn btn-success" onclick="exportGolden()" style="width:100%;justify-content:center;">📥 Exporter Golden Records</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ── NAVIRES ── -->
+      <div class="section fade-in" id="section-maritime-vessels">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;margin:0 0 2px;">Flotte — Navires</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0;">Référentiel navires avec validation IMO / MMSI</p>
+          </div>
+          <button class="btn btn-primary" onclick="openVesselModal()">+ Nouveau navire</button>
+        </div>
+        <!-- KPIs maritimes -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;" id="maritime-kpis"></div>
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+            <input class="input" style="max-width:200px;" placeholder="Nom, IMO, MMSI…" id="vessel-search" oninput="debounceVessels()"/>
+            <select class="select" style="max-width:150px;" id="vessel-flag" onchange="loadVessels()"><option value="">Tous pavillons</option></select>
+            <select class="select" style="max-width:160px;" id="vessel-type-filter" onchange="loadVessels()"><option value="">Tous types</option></select>
+          </div>
+          <div id="vessels-table" style="overflow-x:auto;"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+            <p style="font-size:12px;color:#9ca3af;margin:0;" id="vessel-count"></p>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-secondary" onclick="vesselPrevPage()" id="vessel-prev" style="padding:5px 10px;font-size:12px;" disabled>← Préc.</button>
+              <span style="font-size:12px;color:#6b7280;padding:0 6px;" id="vessel-page-info">Page 1</span>
+              <button class="btn btn-secondary" onclick="vesselNextPage()" id="vessel-next" style="padding:5px 10px;font-size:12px;" disabled>Suiv. →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ARMATEURS ── -->
+      <div class="section fade-in" id="section-maritime-owners">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;margin:0 0 2px;">Armateurs / Propriétaires</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0;">Gestion des armateurs et leur flotte</p>
+          </div>
+          <button class="btn btn-primary" onclick="openOwnerModal()">+ Nouvel armateur</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <input class="input" style="max-width:220px;" placeholder="Nom armateur…" id="owner-search" oninput="debounceOwners()"/>
+            <select class="select" style="max-width:160px;" id="owner-country" onchange="loadOwners()"><option value="">Tous pays</option></select>
+          </div>
+          <div id="owners-table" style="overflow-x:auto;"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+        </div>
+      </div>
+
+      <!-- ── PORTS ── -->
+      <div class="section fade-in" id="section-maritime-ports">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;margin:0 0 2px;">Ports & Terminaux</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0;">Référentiel ports avec validation UN/LOCODE</p>
+          </div>
+          <button class="btn btn-primary" onclick="openPortModal()">+ Nouveau port</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <input class="input" style="max-width:220px;" placeholder="Nom port, LOCODE…" id="port-search" oninput="debouncePorts()"/>
+            <select class="select" style="max-width:160px;" id="port-country" onchange="loadPorts()"><option value="">Tous pays</option></select>
+          </div>
+          <div id="ports-table" style="overflow-x:auto;"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+        </div>
+      </div>
+
+      <!-- ── ESCALES ── -->
+      <div class="section fade-in" id="section-maritime-calls">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:16px;font-weight:700;margin:0 0 2px;">Escales (Port Calls)</h3>
+            <p style="font-size:12px;color:#9ca3af;margin:0;">Suivi des mouvements navires par port</p>
+          </div>
+          <button class="btn btn-primary" onclick="openCallModal()">+ Nouvelle escale</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+            <input class="input" style="max-width:200px;" placeholder="Navire, IMO, port…" id="call-search" oninput="debounceCalls()"/>
+            <select class="select" style="max-width:160px;" id="call-status-filter" onchange="loadCalls()">
+              <option value="">Tous statuts</option>
+              <option value="Planned">Planned</option>
+              <option value="In Transit">In Transit</option>
+              <option value="At Anchor">At Anchor</option>
+              <option value="Berthed">Berthed</option>
+              <option value="Departed">Departed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div id="calls-table" style="overflow-x:auto;"><p style="color:#9ca3af;font-size:13px;">Chargement…</p></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /app -->
+
+<!-- ═══════ MODALS ═══════ -->
+<!-- Entity modal -->
+<div id="entity-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:540px;">
+    <div style="padding:20px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="entity-modal-title">Nouvelle Entité</h3>
+      <button onclick="closeEntityModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:20px 22px;">
+      <p style="font-size:12px;color:#9ca3af;margin:0 0 12px;">Champs libres (clé / valeur)</p>
+      <div id="entity-fields-container" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <button onclick="addEntityField()" style="background:none;border:none;cursor:pointer;color:#1B5EA6;font-size:13px;font-weight:600;margin-top:10px;padding:0;">+ Ajouter un champ</button>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeEntityModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEntity()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Connection modal -->
+<div id="conn-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:520px;">
+    <div style="padding:20px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="conn-modal-title">Nouvelle connexion DB</h3>
+      <button onclick="closeConnModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nom</label><input class="input" id="c-name" placeholder="Mon CRM"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Type</label>
+          <select class="select" id="c-type">
+            <option value="postgresql">PostgreSQL</option>
+            <option value="mysql">MySQL</option>
+            <option value="mariadb">MariaDB</option>
+            <option value="mssql">SQL Server</option>
+            <option value="oracle">Oracle</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;">
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Hôte</label><input class="input" id="c-host" placeholder="localhost ou 192.168.1.x"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Port</label><input class="input" id="c-port" type="number" placeholder="5432"/></div>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nom de la base</label><input class="input" id="c-db" placeholder="ma_base"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Utilisateur</label><input class="input" id="c-user" placeholder="postgres"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Mot de passe</label><input class="input" id="c-pass" type="password" placeholder="••••••••"/></div>
+      </div>
+      <div id="conn-test-result" style="display:none;padding:10px 12px;border-radius:8px;font-size:13px;"></div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeConnModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-warning" onclick="testCurrentConn()" style="flex:1;justify-content:center;">🔌 Tester</button>
+      <button class="btn btn-primary" onclick="saveConn()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rule modal -->
+<div id="rule-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div style="padding:20px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="rule-modal-title">Nouvelle règle</h3>
+      <button onclick="closeRuleModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:12px;">
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nom de la règle</label><input class="input" id="r-name" placeholder="ex: Priorité email CRM"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Champ ciblé (* = tous)</label><input class="input" id="r-field" placeholder="email"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Stratégie</label>
+          <select class="select" id="r-strategy" onchange="toggleSourcePriority()">
+            <option value="most_complete">most_complete</option>
+            <option value="non_empty">non_empty</option>
+            <option value="longest">longest</option>
+            <option value="source_priority">source_priority</option>
+            <option value="always_entity1">always_entity1</option>
+            <option value="always_entity2">always_entity2</option>
+          </select>
+        </div>
+      </div>
+      <div id="source-priority-wrap" style="display:none;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Sources prioritaires (ordre, virgule séparée)</label>
+        <input class="input" id="r-priority" placeholder="ex: CRM, ERP, Manuel"/>
+        <p style="font-size:11px;color:#9ca3af;margin:4px 0 0;">La 1ère source listée a la priorité la plus haute.</p>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Actif</label>
+        <select class="select" id="r-active"><option value="1">✅ Oui</option><option value="0">❌ Non</option></select>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeRuleModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-primary" onclick="saveRule()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Merge modal -->
+<div id="merge-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:700px;">
+    <div style="padding:18px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;">
+      <div>
+        <h3 style="font-size:15px;font-weight:700;margin:0;">Fusion → Golden Record</h3>
+        <p style="font-size:12px;color:#9ca3af;margin:2px 0 0;">Sélectionnez la valeur à conserver pour chaque champ</p>
+      </div>
+      <button onclick="closeMergeModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:18px 22px 0;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-secondary" onclick="applyRulesPreview()" style="font-size:12px;">⚡ Appliquer les règles automatiquement</button>
+      </div>
+      <div id="merge-fields" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+    <div style="padding:16px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;position:sticky;bottom:0;background:#fff;margin-top:14px;">
+      <button class="btn btn-secondary" onclick="closeMergeModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-success" onclick="confirmMerge()" style="flex:1;justify-content:center;">✅ Créer le Golden Record</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Vessel Modal -->
+<div id="vessel-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:620px;">
+    <div style="padding:18px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="vessel-modal-title">Nouveau navire</h3>
+      <button onclick="closeVesselModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="grid-column:span 2;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nom du navire *</label><input class="input" id="v-name" placeholder="ex: Atlantic Star"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Numéro IMO *</label>
+        <div style="display:flex;gap:6px;">
+          <input class="input" id="v-imo" placeholder="IMO9321483" oninput="liveValidateIMO()"/>
+          <span id="imo-check" style="font-size:18px;line-height:36px;min-width:24px;"></span>
+        </div>
+        <p style="font-size:10px;color:#9ca3af;margin:2px 0 0;">Format : IMO + 7 chiffres</p>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">MMSI</label>
+        <div style="display:flex;gap:6px;">
+          <input class="input" id="v-mmsi" placeholder="123456789" oninput="liveValidateMMSI()"/>
+          <span id="mmsi-check" style="font-size:18px;line-height:36px;min-width:24px;"></span>
+        </div>
+        <p style="font-size:10px;color:#9ca3af;margin:2px 0 0;">9 chiffres</p>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Type de navire</label><select class="select" id="v-type"><option value="">— Sélectionner —</option></select></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Pavillon</label><select class="select" id="v-flag"><option value="">— Sélectionner —</option></select></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Jauge brute (GT)</label><input class="input" type="number" id="v-gt" placeholder="ex: 45000"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Port en lourd (DWT)</label><input class="input" type="number" id="v-dwt" placeholder="ex: 82000"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Année de construction</label><input class="input" type="number" id="v-year" placeholder="ex: 2018" min="1900" max="2030"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Société de classification</label><input class="input" id="v-class" placeholder="ex: Lloyd's Register, Bureau Veritas"/></div>
+      <div style="grid-column:span 2;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Opérateur</label><input class="input" id="v-operator" placeholder="ex: MSC, Maersk…"/></div>
+      <div style="grid-column:span 2;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Source</label><input class="input" id="v-source" placeholder="ex: Equasis, Lloyd's, Manuel"/></div>
+    </div>
+    <div id="vessel-modal-errors" style="display:none;margin:0 22px 12px;padding:10px 12px;background:#fee2e2;border-radius:8px;font-size:12px;color:#991b1b;"></div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeVesselModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-primary" onclick="saveVessel()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Owner Modal -->
+<div id="owner-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:540px;">
+    <div style="padding:18px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="owner-modal-title">Nouvel armateur</h3>
+      <button onclick="closeOwnerModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="grid-column:span 2;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nom de l'armateur *</label><input class="input" id="o-name" placeholder="ex: Mediterranean Shipping Company"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Type</label>
+        <select class="select" id="o-type">
+          <option value="Shipowner">Shipowner</option><option value="Operator">Operator</option>
+          <option value="Manager">Manager</option><option value="Charterer">Charterer</option><option value="Other">Other</option>
+        </select>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Pays</label><select class="select" id="o-country"><option value="">— Sélectionner —</option></select></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Ville</label><input class="input" id="o-city" placeholder="ex: Genève"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Email contact</label><input class="input" id="o-email" type="email" placeholder="contact@armateur.com"/></div>
+      <div style="grid-column:span 2;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Adresse</label><input class="input" id="o-address" placeholder="Adresse complète"/></div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeOwnerModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-primary" onclick="saveOwner()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Modal -->
+<div id="port-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:560px;">
+    <div style="padding:18px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="port-modal-title">Nouveau port</h3>
+      <button onclick="closePortModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="grid-column:span 2;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nom du port *</label><input class="input" id="p-name" placeholder="ex: Port de Casablanca"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">UN/LOCODE *</label>
+        <div style="display:flex;gap:6px;">
+          <input class="input" id="p-locode" placeholder="ex: MA AGD" style="text-transform:uppercase;" oninput="liveValidateLOCODE()"/>
+          <span id="locode-check" style="font-size:18px;line-height:36px;min-width:24px;"></span>
+        </div>
+        <p style="font-size:10px;color:#9ca3af;margin:2px 0 0;">2 lettres pays + 3 lettres/chiffres</p>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Pays</label><select class="select" id="p-country"><option value="">— Sélectionner —</option></select></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Latitude</label><input class="input" type="number" id="p-lat" placeholder="ex: 33.6086" step="0.0001"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Longitude</label><input class="input" type="number" id="p-lon" placeholder="ex: -7.6328" step="0.0001"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Tirant d'eau max (m)</label><input class="input" type="number" id="p-draft" placeholder="ex: 14.5" step="0.1"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Taille max navire</label><input class="input" id="p-maxsize" placeholder="ex: Panamax, VLCC"/></div>
+      <div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="p-tide"/><label style="font-size:13px;">Dépendant des marées</label></div>
+      <div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="p-pilot" checked/><label style="font-size:13px;">Pilotage obligatoire</label></div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closePortModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-primary" onclick="savePort()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Port Call Modal -->
+<div id="call-modal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:600px;">
+    <div style="padding:18px 22px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:15px;font-weight:700;margin:0;" id="call-modal-title">Nouvelle escale</h3>
+      <button onclick="closeCallModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:20px;">✕</button>
+    </div>
+    <div style="padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Navire (nom ou IMO)</label><input class="input" id="c-vessel" placeholder="Nom ou IMO9xxxxxxx"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Port (nom ou LOCODE)</label><input class="input" id="c-port" placeholder="Nom port ou MA AGD"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">ETA (arrivée prévue)</label><input class="input" type="datetime-local" id="c-eta"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">ETD (départ prévu)</label><input class="input" type="datetime-local" id="c-etd"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Statut</label>
+        <select class="select" id="c-status">
+          <option value="Planned">Planned</option><option value="In Transit">In Transit</option>
+          <option value="At Anchor">At Anchor</option><option value="Berthed">Berthed</option>
+          <option value="Departed">Departed</option><option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Type de cargaison</label>
+        <select class="select" id="c-cargo">
+          <option value="">— Sélectionner —</option>
+          <option>Dry Bulk</option><option>Liquid Bulk</option><option>Container</option>
+          <option>Ro-Ro</option><option>General Cargo</option><option>Ballast</option><option>Other</option>
+        </select>
+      </div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Quantité (MT)</label><input class="input" type="number" id="c-qty" placeholder="ex: 45000"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Numéro de voyage</label><input class="input" id="c-voyage" placeholder="ex: V001W"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Terminal</label><input class="input" id="c-terminal" placeholder="ex: Terminal Minéralier"/></div>
+      <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Agent</label><input class="input" id="c-agent" placeholder="ex: Marsa Maroc"/></div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeCallModal()" style="flex:1;justify-content:center;">Annuler</button>
+      <button class="btn btn-primary" onclick="saveCall()" style="flex:1;justify-content:center;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/maritime.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
