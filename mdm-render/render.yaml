@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: osmdm-v2
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn backend.app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    envVars:
+      - key: MDM_SECRET
+        generateValue: true
+      - key: RENDER
+        value: "true"
+      - key: FLASK_ENV
+        value: production
