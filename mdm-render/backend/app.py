@@ -22,6 +22,9 @@ SECRET_KEY = os.environ.get('MDM_SECRET', 'os-mdm-v2-secret-change-in-prod')
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 app.config['DB_PATH'] = DB_PATH
+import sys, os as _os
+sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from maritime import maritime_bp, MARITIME_SCHEMA
 app.register_blueprint(maritime_bp, url_prefix='/api/maritime')
 
 import os
