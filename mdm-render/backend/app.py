@@ -19,7 +19,10 @@ DB_PATH    = os.path.join(BASE_DIR, '..', 'data', 'mdm.db')
 UPLOAD_DIR = os.path.join(BASE_DIR, '..', 'uploads')
 SECRET_KEY = os.environ.get('MDM_SECRET', 'os-mdm-v2-secret-change-in-prod')
 
-app = Flask(__name__)
+FRONTEND_DIR_INIT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend')
+app = Flask(__name__, 
+    static_folder=os.path.join(FRONTEND_DIR_INIT, 'static'),
+    template_folder=os.path.join(FRONTEND_DIR_INIT, 'templates'))
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 app.config['DB_PATH'] = DB_PATH
 import sys, os as _os
@@ -42,6 +45,14 @@ def serve_index():
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory(STATIC_DIR, filename)
+
+@app.route('/static/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory(os.path.join(STATIC_DIR, 'js'), filename)
+
+@app.route('/static/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory(os.path.join(STATIC_DIR, 'css'), filename)
 
 @app.route('/health')
 def health():
